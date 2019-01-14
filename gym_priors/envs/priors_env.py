@@ -8,25 +8,26 @@ import matplotlib.pyplot as plt
 class PriorsEnv(gym.Env):
     metadata = {}
 
-    def __init__(self, exp_dur=100, trial_duration=10,
-                 repeating_prob=(0.2, 0.7), rewards=(-0.1, 0.0, 1.0, -1.0),
-                 block_dur=200, stim_evidence=0.5):
+    def __init__(self):
         print('init environment!')
         # exp. duration (training will consist in several experiments)
-        self.exp_dur = exp_dur
+        self.exp_dur = None
         # num steps per trial
-        self.trial_duration = trial_duration
+        self.trial_dur = None
         # rewards given for: stop fixating, keep fixating, correct, wrong
-        self.rewards = rewards
+        self.rewards = None
         # number of trials per blocks
-        self.block_dur = block_dur
+        self.block_dur = None
         # stimulus evidence: one stimulus is always N(1,1), the mean of
         # the other is drawn from a uniform distrib.=U(stim_ev,1).
         # stim_evidence must then be between 0 and 1 and the higher it is
         # the more difficult will be the task
-        self.stim_evidence = np.max([stim_evidence, 10e-5])
+        self.stim_evidence = None
         # prob. of repeating the stimuli in the positions of previous trial
-        self.repeating_prob = repeating_prob
+        self.rep_prob = None
+
+        # folder to save data
+        self.folder = None
 
         # num actions
         self.num_actions = 3
@@ -60,24 +61,33 @@ class PriorsEnv(gym.Env):
         self.rep_prob = []
         # summed activity across the trial
         self.action = []
-        
-        # figure
-        self.fig = plt.figure()
 
     def update_params(self, args):
         # exp. duration (num. trials; training consists in several exps)
-        self.exp_dur = args.exp_dur or self.exp_dur
+        self.exp_dur = args.exp_dur
         # num steps per trial
-        self.trial_duration = args.trial_dur or self.trial_duration
+        self.trial_dur = args.trial_dur
         # rewards given for: stop fixating, keep fixating, correct, wrong
-        self.rewards = args.rew or self.rewards
+        self.rewards = args.rew
         # number of trials per blocks
-        self.block_dur = args.block_dur or self.block_dur
+        self.block_dur = args.block_dur
         # stimulus evidence
-        stim_ev = args.stim_ev or self.stim_evidence
+        stim_ev = args.stim_ev
         self.stim_evidence = np.max([stim_ev, 10e-5])
         # prob. of repeating the stimuli in the positions of previous trial
-        self.repeating_prob = args.rep_prob or self.repeating_prob
+        self.rep_prob = args.rep_prob
+        # prob. of repeating the stimuli in the positions of previous trial
+        self.folder = args.folder
+
+        print('--------------- Priors experiment ---------------')
+        print('Duration of each experiment (in trials): ' +
+              str(self.exp_dur))
+        print('Duration of each trial (in steps): ' + str(self.trial_dur))
+        print('Rewards: ' + str(self.rewards))
+        print('Duration of each block (in trials): ' + str(self.block_dur))
+        print('Repeating probabilities of each block: ' + str(self.rep_prob))
+        print('Saving folder: ' + str(self.folder))
+        print('--------------- ----------------- ---------------')
 
     def step(self, action):
         """
@@ -90,7 +100,7 @@ class PriorsEnv(gym.Env):
         done = False
 
         # decide which reward and state (new_trial, correct) we are in
-        if self.timestep < self.trial_duration:
+        if self.timestep < self.trial_dur:
             if (self.int_st[action] != -1).all():
                 reward = self.rewards[0]
             else:
@@ -117,7 +127,7 @@ class PriorsEnv(gym.Env):
             done = ((self.num_tr-1) % self.exp_dur == 0) and (self.num_tr != 1)
             if self.num_tr % 10000 == 0:
                 self.save_trials_data()
-            self.render()
+                self.render()
         else:
             new_st = self.get_state()
 
@@ -125,7 +135,7 @@ class PriorsEnv(gym.Env):
 
     def get_state(self):
         self.timestep += 1  # this was previously in pullArm
-        if self.timestep < self.trial_duration:
+        if self.timestep < self.trial_dur:
             self.state = [np.random.normal(self.int_st[0], scale=1),
                           np.random.normal(
                                            self.int_st[1],
@@ -154,7 +164,7 @@ class PriorsEnv(gym.Env):
             self.curr_rep_prob = int(not self.curr_rep_prob)
 
         # flip a coin
-        repeat = np.random.uniform() < self.repeating_prob[self.curr_rep_prob]
+        repeat = np.random.uniform() < self.rep_prob[self.curr_rep_prob]
         if not repeat:
             self.stms_pos_new_trial = not(self.stms_pos_new_trial)
 
@@ -185,7 +195,8 @@ class PriorsEnv(gym.Env):
 
     def render(self, mode='', close=False):
         conv_w = 20
-        plt.figure(self.fig.number)
-        plt.cla()
+        f = plt.figure()
         plt.plot(np.convolve(self.perf_mat, np.ones((conv_w, )) / conv_w))
         plt.show(block=False)
+        f.savefig(self.folder + 'performance.svg', dpi=200,
+                  bbox_inches='tight')
