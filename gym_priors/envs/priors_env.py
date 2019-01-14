@@ -60,6 +60,24 @@ class PriorsEnv(gym.Env):
         self.rep_prob = []
         # summed activity across the trial
         self.action = []
+        
+        # figure
+        self.fig = plt.figure()
+
+    def update_params(self, args):
+        # exp. duration (num. trials; training consists in several exps)
+        self.exp_dur = args.exp_dur or self.exp_dur
+        # num steps per trial
+        self.trial_duration = args.trial_dur or self.trial_duration
+        # rewards given for: stop fixating, keep fixating, correct, wrong
+        self.rewards = args.rew or self.rewards
+        # number of trials per blocks
+        self.block_dur = args.block_dur or self.block_dur
+        # stimulus evidence
+        stim_ev = args.stim_ev or self.stim_evidence
+        self.stim_evidence = np.max([stim_ev, 10e-5])
+        # prob. of repeating the stimuli in the positions of previous trial
+        self.repeating_prob = args.rep_prob or self.repeating_prob
 
     def step(self, action):
         """
@@ -167,6 +185,7 @@ class PriorsEnv(gym.Env):
 
     def render(self, mode='', close=False):
         conv_w = 20
+        plt.figure(self.fig.number)
+        plt.cla()
         plt.plot(np.convolve(self.perf_mat, np.ones((conv_w, )) / conv_w))
-        plt.show()
-        print('plot!')
+        plt.show(block=False)

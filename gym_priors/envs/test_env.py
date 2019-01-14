@@ -16,5 +16,5 @@ env.exp_dur = 2
 
 env.step(0)
 #
-#for ind_stp in range(102):
-#  print(env.step(np.random.choice([0, 1, 2])))
+for ind_stp in range(1000):
+    env.step(np.random.choice([0, 1, 2]))
