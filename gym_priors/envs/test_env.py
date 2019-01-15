@@ -22,14 +22,15 @@ def arg_parser():
                         type=int, default=100)
     parser.add_argument('--trial_dur', help='num. of steps in each trial',
                         type=int, default=10)
-    parser.add_argument('--rew', help='rewards for: stop fix, fix, hit, fail',
-                        type=list, default=(-0.1, 0.0, 1.0, -1.0))
+    parser.add_argument('-r', '--reward',
+                        help='rewards for: stop fix, fix, hit, fail',
+                        type=float, nargs='+', default=(-0.1, 0.0, 1.0, -1.0))
     parser.add_argument('--block_dur', help='num. of trials x block', type=int,
                         default=200)
     parser.add_argument('--stim_ev', help='level of difficulty of the exp.',
                         type=float, default=0.5)
-    parser.add_argument('--rep_prob', help='rep. prob. for each block',
-                        type=list, default=(.2, .8))
+    parser.add_argument('-rp', '--rep_prob', help='rep. prob. for each block',
+                        type=float, nargs='+', default=(.2, .8))
     parser.add_argument('--folder', help='where to save the data',
                         type=str, default='')
     return parser
@@ -37,11 +38,9 @@ def arg_parser():
 
 def make_env(args):
     env = gym.make('priors-v0')
+    print(env)
     arg_pars = arg_parser()
     params, unk_params = arg_pars.parse_known_args(args)
-    print('what is this?:')
-    print(unk_params)
-    print(params)
     env.update_params(params)
 
 #    env.exp_dur = 2
@@ -53,5 +52,4 @@ def make_env(args):
 
 
 if __name__ == '__main__':
-    print(sys.argv)
     make_env(sys.argv)

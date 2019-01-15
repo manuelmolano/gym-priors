@@ -1,3 +1,4 @@
+import os
 import gym
 import numpy as np
 from gym import spaces
@@ -8,26 +9,29 @@ import matplotlib.pyplot as plt
 class PriorsEnv(gym.Env):
     metadata = {}
 
-    def __init__(self):
+    def __init__(self, exp_dur=None, trial_dur=None,
+                 rep_prob=None, rewards=None,
+                 block_dur=None, stim_ev=None, folder=None):
         print('init environment!')
+        # get path to env. script
+        self.code_path = os.path.realpath(__file__)
         # exp. duration (training will consist in several experiments)
-        self.exp_dur = None
+        self.exp_dur = exp_dur
         # num steps per trial
-        self.trial_dur = None
+        self.trial_dur = trial_dur
         # rewards given for: stop fixating, keep fixating, correct, wrong
-        self.rewards = None
+        self.rewards = rewards
         # number of trials per blocks
-        self.block_dur = None
+        self.block_dur = block_dur
         # stimulus evidence: one stimulus is always N(1,1), the mean of
         # the other is drawn from a uniform distrib.=U(stim_ev,1).
-        # stim_evidence must then be between 0 and 1 and the higher it is
+        # stim_ev must then be between 0 and 1 and the higher it is
         # the more difficult will be the task
-        self.stim_evidence = None
+        self.stim_ev = stim_ev
         # prob. of repeating the stimuli in the positions of previous trial
-        self.rep_prob = None
-
+        self.rep_prob = rep_prob
         # folder to save data
-        self.folder = None
+        self.folder = folder
 
         # num actions
         self.num_actions = 3
@@ -64,20 +68,20 @@ class PriorsEnv(gym.Env):
 
     def update_params(self, args):
         # exp. duration (num. trials; training consists in several exps)
-        self.exp_dur = args.exp_dur
+        self.exp_dur = args.exp_dur or self.exp_dur
         # num steps per trial
-        self.trial_dur = args.trial_dur
+        self.trial_dur = args.trial_dur or self.trial_dur
         # rewards given for: stop fixating, keep fixating, correct, wrong
-        self.rewards = args.rew
+        self.rewards = args.reward or self.rewards
         # number of trials per blocks
-        self.block_dur = args.block_dur
+        self.block_dur = args.block_dur or self.block_dur
         # stimulus evidence
-        stim_ev = args.stim_ev
-        self.stim_evidence = np.max([stim_ev, 10e-5])
+        stim_ev = args.stim_ev or self.stim_ev
+        self.stim_ev = np.max([stim_ev, 10e-5])
         # prob. of repeating the stimuli in the positions of previous trial
-        self.rep_prob = args.rep_prob
+        self.rep_prob = args.rep_prob or self.rep_prob
         # prob. of repeating the stimuli in the positions of previous trial
-        self.folder = args.folder
+        self.folder = args.folder or self.folder
 
         print('--------------- Priors experiment ---------------')
         print('Duration of each experiment (in trials): ' +
@@ -98,7 +102,6 @@ class PriorsEnv(gym.Env):
         new_trial = True
         correct = False
         done = False
-
         # decide which reward and state (new_trial, correct) we are in
         if self.timestep < self.trial_dur:
             if (self.int_st[action] != -1).all():
@@ -154,7 +157,7 @@ class PriorsEnv(gym.Env):
         self.evidence = 0
         # this are the means of the two stimuli
         stim1 = 1.0
-        stim2 = np.random.uniform(1-self.stim_evidence, 1)
+        stim2 = np.random.uniform(1-self.stim_ev, 1)
         assert stim2 != 1.0
         self.choices = [stim1, stim2]
 
