@@ -90,6 +90,7 @@ class PriorsEnv(gym.Env):
         print('Rewards: ' + str(self.rewards))
         print('Duration of each block (in trials): ' + str(self.block_dur))
         print('Repeating probabilities of each block: ' + str(self.rep_prob))
+        print('Stim evidence: ' + str(self.stim_ev))
         print('Saving folder: ' + str(self.folder))
         print('--------------- ----------------- ---------------')
 
@@ -203,3 +204,4 @@ class PriorsEnv(gym.Env):
         plt.show(block=False)
         f.savefig(self.folder + 'performance.svg', dpi=200,
                   bbox_inches='tight')
+        plt.close(f)
