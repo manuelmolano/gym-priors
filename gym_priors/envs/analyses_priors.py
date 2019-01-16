@@ -11,8 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 from scipy.optimize import curve_fit
 from scipy.special import erf
-import main
-# import time
+import os
 from sklearn.metrics import roc_curve, auc
 from sklearn.decomposition import PCA
 import analyses
@@ -205,8 +204,8 @@ def plot_learning(performance, evidence, stim_position, action,
             plt.close(f)
 
 
-def plot_psychometric_curves(evidence, stims_pos, performance, action,
-                             rep_prob, blk_dur=1, stps=10**10, per=0,
+def plot_psychometric_curves(evidence, performance, action,
+                             rep_prob, blk_dur=200, stps=10**10, per=0,
                              folder='', name='', plt_av=True, figs=False):
     """
     plots psychometric curves
@@ -216,7 +215,7 @@ def plot_psychometric_curves(evidence, stims_pos, performance, action,
     """
 
     # get periods within block to filter the data
-    _, aux = np.mgrid[0:evidence.shape[0], 1:evidence.shape[1]+1]
+    _, aux = np.mgrid[0:evidence.shape[0], 0:evidence.shape[1]]
     perds = np.floor((aux % blk_dur) / stps)
 
     # repeating probs. values
@@ -436,7 +435,7 @@ def block_stats_perf(performance, blk_dur=1, stps=10**10):
     """
 
     # get periods within block to filter the data
-    _, aux = np.mgrid[0:performance.shape[0], 1:performance.shape[1]+1]
+    _, aux = np.mgrid[0:performance.shape[0], 0:performance.shape[1]]
     perds = np.floor((aux % blk_dur) / stps)
     perds_vals = np.unique(perds)
 
@@ -458,7 +457,7 @@ def block_stats_bias(evidence, stims_pos, performance, action,
     gets bias stats for different periods of the block
     """
     # get periods within block to filter the data
-    _, aux = np.mgrid[0:evidence.shape[0], 1:evidence.shape[1]+1]
+    _, aux = np.mgrid[0:evidence.shape[0], 0:evidence.shape[1]]
     perds = np.floor((aux % blk_dur) / stps)
     perds_vals = np.unique(perds)
 
@@ -506,7 +505,7 @@ def blk_stats_act(net_st, rep_prob, blk_dur=1, stps=10**10):
     """
 
     # get periods within block to filter the data
-    _, aux = np.mgrid[0:rep_prob.shape[0], 1:rep_prob.shape[1]+1]
+    _, aux = np.mgrid[0:rep_prob.shape[0], 0:rep_prob.shape[1]]
     perds = np.floor((aux % blk_dur) / stps)
     perds_vals = np.unique(perds)
 
@@ -750,175 +749,39 @@ def plot_pcs(pcs, mat_cond, values, name, st, mask, panel, grid=[], ind=0):
 
 
 if __name__ == '__main__':
-    # plt.close('all')
-    # number of CPU cores in which the A3C model run
-    # the different agents/workers
-    num_w = 12
-    # discount rate for advantage estimation and reward discounting
-    gamma = .8
-    # number of trials to update the network w/ samples acquired by the workers
-    update_net_step = 5
-    trial_duration = 10  # duration of the stims presentation window
-    repeating_prob = [.2, .8]  # probability of repeating the previous side
-    # rewards: [stop fixating too early,keep fixating, hit, fail]
-    rewards = [-0.1, 0.0, 1.0, -1.0]
-    block_dur = 200  # duration of repeating/alternating blocks
-    num_units = 32  # number of units in the RNN
-    # stimulus evidence:
-    # one stimulus is always N(1,1)
-    # the mean of the other is drawn from a unif. distrib.= U(stim_evidence,1)
-    # it must then be between 0-1 and the higher it is the harder is the task
-    stim_evidence = 0.4
-    network = 'ugru'
-    instance = 51
-    exp = 'trial_duration_' + str(trial_duration) +\
-        '_repeating_prob_' +\
-        str(main.make_list_nice_string(repeating_prob)) +\
-        '_rewards_' + str(main.make_list_nice_string(rewards)) +\
-        '_block_dur_' + str(block_dur) + '_stimEv_' +\
-        str(stim_evidence) + '_gamma_' + str(gamma) +\
-        '_num_units_' + str(num_units) + '_update_net_step_' +\
-        str(update_net_step) + '_network_' + str(network) +\
-        '_'+str(instance)
-    folder = utils.look_for_folder('priors/', exp) + '/'
+    # exp. duration (num. trials; training consists in several exps)
+    exp_dur = 100
+    # num steps per trial
+    trial_dur = 10
+    # rewards given for: stop fixating, keep fixating, correct, wrong
+    rewards = (-0.1, 0.0, 1.0, -1.0)
+    # number of trials per blocks
+    block_dur = 200
+    # stimulus evidence
+    stim_ev = 0.95
+    # prob. of repeating the stimuli in the positions of previous trial
+    rep_prob = [0.1, 0.9]
+    # model seed
+    env_seed = 0
+    # folder where data will be saved
+    main_folder = '/home/molano/expectations_results'
+    exp = main_folder + '/ed_' + str(exp_dur) +\
+        '_rp_' +\
+        str(utils.list_str(rep_prob)) +\
+        '_r_' + str(utils.list_str(rewards)) +\
+        '_bd_' + str(block_dur) + '_ev_' +\
+        str(stim_ev) + '/' + str(env_seed)
+    folder = exp
 
-    print(folder)
-
-    # num. trials to plot: trials figure (10 trials),
-    # sequence figure (400 sequence, 50 zoom), learning (100000 trials)
-    stim2, trial_duration, performance, stims_pos, reward_trials,\
-        repeat, evidence, rep_prob, net_st, action =\
-        load_prior_data(folder=folder, num_workers=num_w, save_data=False)
-
-#    plt.figure()
-#    plt.plot(np.sum(action == 2, axis=0))
-#    st = 0
-#    period = 1000000
-#    evidence_aux = evidence[:, st:st+period].copy()
-#    stims_pos_aux = stims_pos[:, st:st+period].copy()
-#    performance_aux = performance[:, st:st+period].copy()
-#    rep_probability_aux = rep_prob[0, st:st+period].copy()
-#    action_aux = action[:, st:st+period].copy()
-#    plot_learning(performance_aux, evidence_aux,
-#                  stims_pos_aux, action_aux,
-#                  rep_probability=rep_probability_aux,
-#                  view_fig=True)
-#
-    st = 20000
-    period = 1000000
-#    evidence_aux = evidence[:, st:st+period].copy()
-#    stims_pos_aux = stims_pos[:, st:st+period].copy()
-    performance_aux = performance[:, st:st+period].copy()
-    action_aux = action[:, st:st+period].copy()
-    rep_probability_aux = rep_prob[:, st:st+period].copy()
-    net_st_aux = net_st[st:st+period, :].copy()
-#    plot_psychometric_curves(evidence_aux, stims_pos_aux, performance_aux,
-#                             action_aux, rep_probability_aux, figs=True)
-
-    pca_3d(net_st_aux, rep_probability_aux, repeating_prob, 0,
-           'block conditioning')
-    pca_3d(net_st_aux, performance_aux, [0, 1], 0,
-           'perf. conditioning')
-    pca_3d(net_st_aux, action_aux, [0, 1], 0,
-           'action conditioning')
-
-#    num_steps = 200
-#    st = 20000
-#    period = 1000000
-#    performance_aux = performance[:, st:st+period].copy()
-#    rep_prob_aux = rep_prob[:, st:st+period].copy()
-#    net_st_aux = net_st[st:st+period, :].copy()
-#    act_mat = blk_stats_act(net_st_aux,
-#                            rep_prob_aux, blk_dur=block_dur,
-#                            stps=int(block_dur/num_steps))
-
-#    num_steps = 200
-#    st = 0
-#    period = 1000000
-#    evidence_aux = evidence[:, st:st+period].copy()
-#    stims_pos_aux = stims_pos[:, st:st+period].copy()
-#    performance_aux = performance[:, st:st+period].copy()
-#    rep_prob_aux = rep_prob[:, st:st+period].copy()
-#    net_st_aux = net_st[st:st+period, :].copy()
-#
-#    perf_mat = block_stats_perf(performance_aux, rep_prob_aux,
-#                                blk_dur=block_dur,
-#                                stps=int(block_dur/num_steps))
-#
-#    act_mat = blk_stats_act(net_st_aux,
-#                            rep_prob_aux, blk_dur=block_dur,
-#                            stps=int(block_dur/num_steps))
-#    num_steps = 50
-#    bias_mat = block_stats_bias(evidence_aux, stims_pos_aux,
-#                                performance_aux, action_aux,
-#                                blk_dur=block_dur,
-#                                stps=int(block_dur/num_steps),
-#                                folder='', name='',
-#                                plt_av=True, figs=False)
-#    plt.figure()
-#    plt.subplot(3, 2, 1)
-#    plt.plot(perf_mat[:, 0])
-#    plt.subplot(3, 2, 3)
-#    plt.plot(bias_mat[:, 0, 0])
-#    plt.plot(bias_mat[:, 0, 1])
-#    plt.subplot(3, 2, 5)
-#    aux1 = act_mat[:, 0, :]
-#    print(aux.shape)
-#    aux /= np.max(aux, axis=0)
-#    plt.plot(aux1)
-#    plt.subplot(3, 2, 2)
-#    plt.plot(perf_mat[:, 1])
-#    plt.subplot(3, 2, 4)
-#    plt.plot(bias_mat[:, 1, 0])
-#    plt.plot(bias_mat[:, 1, 1])
-#    plt.subplot(3, 2, 6)
-#    aux2 = act_mat[:, 1, :]
-#    print(aux.shape)
-#    aux /= np.max(aux, axis=0)
-#    plt.plot(aux2)
-#
-#    plt.figure()
-#    plt.subplot(2, 1, 1)
-#    plt.imshow(np.abs((aux1 - aux2).T), aspect='auto')
-#    plt.subplot(2, 1, 2)
-#    plt.plot(np.sum(np.abs((aux1 - aux2).T), axis=0))
-
-    # tests with probit
-    #    minimo = -10
-    #    maximo = 10
-    #    x = np.linspace(minimo, maximo, 50)
-    #
-    #    plt.figure()
-    #    slope = 0.5
-    #    b = 1
-    #    y = probit(x, slope, b)
-    #    plt.plot(x, y, label='slope: ' + str(slope) + '  b: ' + str(b))
-    #
-    #    slope = 1
-    #    b = 1
-    #    y = probit(x, slope, b)
-    #    plt.plot(x, y, label='slope: ' + str(slope) + '  b: ' + str(b))
-    #
-    #    slope = 1
-    #    b = 2
-    #    y = probit(x, slope, b)
-    #    plt.plot(x, y, label='slope: ' + str(slope) + '  b: ' + str(b))
-    #
-    #    plot_dashed_lines(minimo, maximo)
-    #    plt.legend(loc='lower right')
-
-    # plot psycho-curves conditionated on previous correct
-    # plt.subplot(rows, cols, 5)
-    # for ind_stp in range(3):
-    #    mask = condition_on_prev_hist(stims_pos_block, ind_stp, 'rep')
-    #    label_aux = block_label[ind_blk] + ' (prob. rep.: ' +\
-    #        str(round(np.mean(repeat[mask]), 3)) + ')'
-    #    popt, pcov = fit_and_plot(rep_ev_block[mask],
-    #                              repeat[mask],
-    #                              label=label_aux)
-    #    plt.xlabel('repetition evidence')
-    #    plt.ylabel('prob. repetition')
-    #
-    #    data['popt_repProb_hits'+block_label[ind_blk]] = popt
-    #    data['pcov_repProb_hits'+block_label[ind_blk]] = pcov
-    #    plt.title('Prev. trials / bias= ' + str(round(popt[1], 3)))
+    # get experiment params and data
+    exp_params = np.load(exp + '/experiment_setup.npz')
+    data = np.load(exp + '/trials_stats_0_50000.npz')
+    ev = data['evidence'].reshape((1, data['evidence'].shape[0]))
+    perf = data['performance'].reshape((1, data['performance'].shape[0]))
+    action = data['action'].reshape((1, data['action'].shape[0]))
+    # build rep. prob vector
+    rp_mat = np.zeros_like(ev)
+    a = np.arange(rp_mat.shape[1])
+    b = np.floor(a/block_dur)
+    rp_mat[:, b % 2 == 0] = 1
+    plot_psychometric_curves(ev, perf, action, rp_mat, figs=True)
