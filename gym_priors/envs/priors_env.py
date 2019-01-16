@@ -2,7 +2,8 @@ import os
 import gym
 import numpy as np
 from gym import spaces
-import matplotlib.pyplot as plt
+import utils
+import sys
 # from gym.utils import seeding
 
 
@@ -10,11 +11,9 @@ class PriorsEnv(gym.Env):
     metadata = {}
 
     def __init__(self, exp_dur=None, trial_dur=None,
-                 rep_prob=None, rewards=None,
+                 rep_prob=None, rewards=None, env_seed='0',
                  block_dur=None, stim_ev=None, folder=None):
         print('init environment!')
-        # get path to env. script
-        self.code_path = os.path.realpath(__file__)
         # exp. duration (training will consist in several experiments)
         self.exp_dur = exp_dur
         # num steps per trial
@@ -30,16 +29,20 @@ class PriorsEnv(gym.Env):
         self.stim_ev = stim_ev
         # prob. of repeating the stimuli in the positions of previous trial
         self.rep_prob = rep_prob
+        # model instance
+        self.env_seed = env_seed
         # folder to save data
         self.folder = folder
 
         # num actions
         self.num_actions = 3
         self.action_space = spaces.Discrete(self.num_actions)
+        # position of the first stimulus
+        self.stms_pos_new_trial = np.random.choice([0, 1])
         # keeps track of the repeating prob of the current block
         self.curr_rep_prob = np.random.choice([0, 1])
         # position of the stimuli
-        self.stms_pos_new_trial = 0
+        self.stm_pos_new_trial = 0
         # steps counter
         self.timestep = 0
         # initialize ground truth state [stim1 mean, stim2 mean, fixation])
@@ -56,17 +59,22 @@ class PriorsEnv(gym.Env):
 
         # trial data to save
         # stimulus evidence
-        self.evidence_mat = []
+        self.ev_mat = []
         # position of stimulus 1
-        self.stms_pos = []
+        self.stm_pos = []
         # performance
         self.perf_mat = []
-        # current repeating probability
-        self.rep_prob = []
         # summed activity across the trial
         self.action = []
 
-    def update_params(self, args):
+    def update_params(self, args, seed=0):
+        """
+        this function should be run after creating an environment to set the
+        main parameters.
+        There does not seem to be easy way of passing those parameters
+        when using the make function of the gym toolbox, so this is a way
+        around to set the parameters.
+        """
         # exp. duration (num. trials; training consists in several exps)
         self.exp_dur = args.exp_dur or self.exp_dur
         # num steps per trial
@@ -80,9 +88,26 @@ class PriorsEnv(gym.Env):
         self.stim_ev = np.max([stim_ev, 10e-5])
         # prob. of repeating the stimuli in the positions of previous trial
         self.rep_prob = args.rep_prob or self.rep_prob
-        # prob. of repeating the stimuli in the positions of previous trial
-        self.folder = args.folder or self.folder
+        # model seed
+        self.env_seed = seed or self.env_seed
+        # folder where data will be saved
+        aux_folder = args.folder or self.folder
+        exp = aux_folder + '/ed_' + str(self.exp_dur) +\
+            '_rp_' +\
+            str(utils.list_str(self.rep_prob)) +\
+            '_r_' + str(utils.list_str(self.rewards)) +\
+            '_bd_' + str(self.block_dur) + '_ev_' +\
+            str(self.stim_ev) + '/' + str(self.env_seed)
+        if not os.path.exists(exp):
+            os.makedirs(exp)
+        self.folder = exp
+        # save environment parameters
+        data = {'exp_dur': self.exp_dur, 'rep_prob': self.rep_prob,
+                'rewards': self.rewards, 'stim_ev': self.stim_ev,
+                'block_dur': self.block_dur,
+                'starting_prob': self.rep_prob[self.curr_rep_prob]}
 
+        np.savez(exp + '/experiment_setup.npz', **data)
         print('--------------- Priors experiment ---------------')
         print('Duration of each experiment (in trials): ' +
               str(self.exp_dur))
@@ -123,15 +148,16 @@ class PriorsEnv(gym.Env):
         info = {'perf': correct, 'ev': self.evidence}
 
         if new_trial:
+            self.stm_pos.append(self.stms_pos_new_trial)
             self.perf_mat.append(correct)
             self.action.append(action)
-            self.evidence_mat.append(self.evidence)
+            self.ev_mat.append(self.evidence)
             new_st = self.new_trial()
             # check if it is time to update the network
             done = ((self.num_tr-1) % self.exp_dur == 0) and (self.num_tr != 1)
             if self.num_tr % 10000 == 0:
                 self.save_trials_data()
-                self.render()
+                self.output_stats()
         else:
             new_st = self.get_state()
 
@@ -177,9 +203,6 @@ class PriorsEnv(gym.Env):
 
         self.int_st = np.concatenate((aux, np.array([-1])))
 
-        # keep position
-        self.stms_pos.append(self.stms_pos_new_trial)
-
         # get state
         s = self.get_state()
 
@@ -187,21 +210,38 @@ class PriorsEnv(gym.Env):
 
     def save_trials_data(self):
         # Periodically save model trials statistics.
-        data = {'stims_position': self.stms_pos,
+        data = {'stims_position': self.stm_pos,
                 'action': self.action,
                 'performance': self.perf_mat,
-                'evidence': self.evidence_mat}
-        np.savez(self.folder +
-                 '/trials_stats_' + str(self.num_tr) + '.npz', **data)
+                'evidence': self.ev_mat}
+        np.savez(self.folder + '/trials_stats_' +
+                 str(self.env_seed) + '_' + str(self.num_tr) + '.npz', **data)
 
     def reset(self):
         return self.new_trial()
 
-    def render(self, mode='', close=False):
-        conv_w = 20
-        f = plt.figure()
-        plt.plot(np.convolve(self.perf_mat, np.ones((conv_w, )) / conv_w))
-        plt.show(block=False)
-        f.savefig(self.folder + 'performance.svg', dpi=200,
-                  bbox_inches='tight')
-        plt.close(f)
+    def output_stats(self):
+        sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+        import analyses_priors as ap
+        # plot psycho. curves
+        ev = np.reshape(self.ev_mat, (1, self.ev_mat.shape[0])).copy()
+        perf = np.reshape(self.perf_mat,
+                          (1, self.perf_mat.shape[0])).copy()
+        action = np.reshape(self.action, (1, self.action.shape[0])).copy()
+        stim_pos = np.reshape(self.stm_pos,
+                              (1, self.stm_pos.shape[0])).copy()
+        ap.plot_psychometric_curves(ev, perf, action, blk_dur=self.blk_dur,
+                                    figs=True, folder=self.folder,
+                                    name='psycho_'+str(self.num_tr))
+        # plot learning
+        ev = np.reshape(self.ev_mat, (1, self.ev_mat.shape[0])).copy()
+        perf = np.reshape(self.perf_mat,
+                          (1, self.perf_mat.shape[0])).copy()
+        action = np.reshape(self.action, (1, self.action.shape[0])).copy()
+        stim_pos = np.reshape(self.stm_pos,
+                              (1, self.stm_pos.shape[0])).copy()
+        ap.plot_learning(perf, ev, stim_pos, action, folder=self.folder,
+                         name='performance', save_fig=True)
+
+    def render():
+        pass

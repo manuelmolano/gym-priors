@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import matplotlib
 from scipy.optimize import curve_fit
 from scipy.special import erf
-import os
 from sklearn.metrics import roc_curve, auc
 from sklearn.decomposition import PCA
 import analyses
@@ -144,7 +143,7 @@ def plot_cumulative_evidence(folder, train, trial, tr_per=[0, 100]):
 
 
 def plot_learning(performance, evidence, stim_position, action,
-                  rep_probability, folder='', name='', save_fig=False,
+                  folder='', name='', save_fig=False,
                   view_fig=False, f=False):
     """
     plots performance of the RNN and the ideal observer.
@@ -155,7 +154,6 @@ def plot_learning(performance, evidence, stim_position, action,
     # ideal observer choice
     io_choice = ideal_observer(evidence, stim_position)
     io_performance = io_choice == stim_position
-
     # save the mean performances
     RNN_perf = np.mean(performance[:, 2000:].flatten())
     io_perf = np.mean(io_performance[:, 2000:].flatten())
@@ -205,7 +203,7 @@ def plot_learning(performance, evidence, stim_position, action,
 
 
 def plot_psychometric_curves(evidence, performance, action,
-                             rep_prob, blk_dur=200, stps=10**10, per=0,
+                             blk_dur=200, stps=10**10, per=0,
                              folder='', name='', plt_av=True, figs=False):
     """
     plots psychometric curves
@@ -217,6 +215,9 @@ def plot_psychometric_curves(evidence, performance, action,
     # get periods within block to filter the data
     _, aux = np.mgrid[0:evidence.shape[0], 0:evidence.shape[1]]
     perds = np.floor((aux % blk_dur) / stps)
+
+    # build the mat that indicates the current block
+    rep_prob = build_block_mat(evidence.shape, blk_dur)
 
     # repeating probs. values
     probs_vals = np.unique(rep_prob)
@@ -747,6 +748,14 @@ def plot_pcs(pcs, mat_cond, values, name, st, mask, panel, grid=[], ind=0):
         plt.yticks([])
         # plt.legend()
 
+def build_block_mat(shape, block_dur):
+    # build rep. prob vector
+    rp_mat = np.zeros(shape)
+    a = np.arange(shape[1])
+    b = np.floor(a/block_dur)
+    rp_mat[:, b % 2 == 0] = 1
+    return rp_mat
+
 
 if __name__ == '__main__':
     # exp. duration (num. trials; training consists in several exps)
@@ -758,7 +767,7 @@ if __name__ == '__main__':
     # number of trials per blocks
     block_dur = 200
     # stimulus evidence
-    stim_ev = 0.95
+    stim_ev = 0.5
     # prob. of repeating the stimuli in the positions of previous trial
     rep_prob = [0.1, 0.9]
     # model seed
@@ -775,13 +784,20 @@ if __name__ == '__main__':
 
     # get experiment params and data
     exp_params = np.load(exp + '/experiment_setup.npz')
-    data = np.load(exp + '/trials_stats_0_50000.npz')
-    ev = data['evidence'].reshape((1, data['evidence'].shape[0]))
-    perf = data['performance'].reshape((1, data['performance'].shape[0]))
-    action = data['action'].reshape((1, data['action'].shape[0]))
-    # build rep. prob vector
-    rp_mat = np.zeros_like(ev)
-    a = np.arange(rp_mat.shape[1])
-    b = np.floor(a/block_dur)
-    rp_mat[:, b % 2 == 0] = 1
-    plot_psychometric_curves(ev, perf, action, rp_mat, figs=True)
+    data = np.load(exp + '/trials_stats_0_80000.npz')
+    # plot psycho. curves
+    ev = np.reshape(data['evidence'], (1, data['evidence'].shape[0])).copy()
+    perf = np.reshape(data['performance'],
+                      (1, data['performance'].shape[0])).copy()
+    action = np.reshape(data['action'], (1, data['action'].shape[0])).copy()
+    stim_pos = np.reshape(data['stims_position'],
+                          (1, data['stims_position'].shape[0])).copy()
+    plot_psychometric_curves(ev, perf, action, blk_dur=block_dur, figs=True)
+    # plot learning
+    ev = np.reshape(data['evidence'], (1, data['evidence'].shape[0])).copy()
+    perf = np.reshape(data['performance'],
+                      (1, data['performance'].shape[0])).copy()
+    action = np.reshape(data['action'], (1, data['action'].shape[0])).copy()
+    stim_pos = np.reshape(data['stims_position'],
+                          (1, data['stims_position'].shape[0])).copy()
+    plot_learning(perf, ev, stim_pos, action, view_fig=True)
