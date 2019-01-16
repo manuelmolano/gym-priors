@@ -223,23 +223,24 @@ class PriorsEnv(gym.Env):
     def output_stats(self):
         sys.path.append(os.path.dirname(os.path.realpath(__file__)))
         import analyses_priors as ap
+        aux_shape = (1, len(self.ev_mat))
         # plot psycho. curves
-        ev = np.reshape(self.ev_mat, (1, self.ev_mat.shape[0])).copy()
+        ev = np.reshape(self.ev_mat, aux_shape).copy()
         perf = np.reshape(self.perf_mat,
-                          (1, self.perf_mat.shape[0])).copy()
-        action = np.reshape(self.action, (1, self.action.shape[0])).copy()
+                          aux_shape).copy()
+        action = np.reshape(self.action, aux_shape).copy()
         stim_pos = np.reshape(self.stm_pos,
-                              (1, self.stm_pos.shape[0])).copy()
-        ap.plot_psychometric_curves(ev, perf, action, blk_dur=self.blk_dur,
+                              aux_shape).copy()
+        ap.plot_psychometric_curves(ev, perf, action, blk_dur=self.block_dur,
                                     figs=True, folder=self.folder,
                                     name='psycho_'+str(self.num_tr))
         # plot learning
-        ev = np.reshape(self.ev_mat, (1, self.ev_mat.shape[0])).copy()
+        ev = np.reshape(self.ev_mat, aux_shape).copy()
         perf = np.reshape(self.perf_mat,
-                          (1, self.perf_mat.shape[0])).copy()
-        action = np.reshape(self.action, (1, self.action.shape[0])).copy()
+                          aux_shape).copy()
+        action = np.reshape(self.action, aux_shape).copy()
         stim_pos = np.reshape(self.stm_pos,
-                              (1, self.stm_pos.shape[0])).copy()
+                              aux_shape).copy()
         ap.plot_learning(perf, ev, stim_pos, action, folder=self.folder,
                          name='performance', save_fig=True)
 

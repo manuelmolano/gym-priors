@@ -197,7 +197,7 @@ def plot_learning(performance, evidence, stim_position, action,
         # plt.legend(loc='lower right')
 
         if folder != '' and save_fig and f is None:
-            f.savefig(folder + 'performance_' + name + '.svg',
+            f.savefig(folder + '/performance_' + name + '.svg',
                       dpi=600, bbox_inches='tight')
             plt.close(f)
 
