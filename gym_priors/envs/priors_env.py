@@ -79,6 +79,7 @@ class PriorsEnv(gym.Env):
         # add current path to sys.path so as to import utils
         sys.path.append(os.path.dirname(os.path.realpath(__file__)))
         import utils
+        print(args)
         # exp. duration (num. trials; training consists in several exps)
         self.exp_dur = exp_dur or args.exp_dur or self.exp_dur
         # num steps per trial
