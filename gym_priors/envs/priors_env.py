@@ -225,12 +225,17 @@ class PriorsEnv(gym.Env):
         import analyses_priors as ap
         aux_shape = (1, len(self.ev_mat))
         # plot psycho. curves
+        per = 20000
         ev = np.reshape(self.ev_mat, aux_shape).copy()
+        ev = ev[np.max([0, len(ev)-per]):]
         perf = np.reshape(self.perf_mat,
                           aux_shape).copy()
+        perf = perf[np.max([0, len(perf)-per]):]
         action = np.reshape(self.action, aux_shape).copy()
+        action = action[np.max([0, len(action)-per]):]
         stim_pos = np.reshape(self.stm_pos,
                               aux_shape).copy()
+        stim_pos = stim_pos[np.max([0, len(stim_pos)-per]):]
         ap.plot_psychometric_curves(ev, perf, action, blk_dur=self.block_dur,
                                     figs=True, folder=self.folder,
                                     name='psycho_'+str(self.num_tr))
@@ -242,7 +247,7 @@ class PriorsEnv(gym.Env):
         stim_pos = np.reshape(self.stm_pos,
                               aux_shape).copy()
         ap.plot_learning(perf, ev, stim_pos, action, folder=self.folder,
-                         name='performance', save_fig=True)
+                         name='', save_fig=True, view_fig=True)
 
     def render():
         pass

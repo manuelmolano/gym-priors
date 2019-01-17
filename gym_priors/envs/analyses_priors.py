@@ -169,7 +169,7 @@ def plot_learning(performance, evidence, stim_position, action,
                                 top=top, wspace=wspace, hspace=hspace)
         # network's choice
         # right_choice = action == 0
-        w_conv = 101  # this is for the smoothing
+        w_conv = 200  # this is for the smoothing
         # plot right choice
         # label_aux = 'Right choice (' +\
         # str(round(np.mean(right_choice[:, 2000:].flatten()), 3)) + ')'
@@ -194,9 +194,11 @@ def plot_learning(performance, evidence, stim_position, action,
         # plot_fractions([0, performance.shape[1]])
         plt.title('performance')
         plt.xlabel('trials')
-        # plt.legend(loc='lower right')
 
-        if folder != '' and save_fig and f is None:
+        print(folder)
+        print(save_fig)
+        print(f)
+        if folder != '' and save_fig:
             f.savefig(folder + '/performance_' + name + '.svg',
                       dpi=600, bbox_inches='tight')
             plt.close(f)
@@ -748,6 +750,7 @@ def plot_pcs(pcs, mat_cond, values, name, st, mask, panel, grid=[], ind=0):
         plt.yticks([])
         # plt.legend()
 
+
 def build_block_mat(shape, block_dur):
     # build rep. prob vector
     rp_mat = np.zeros(shape)
@@ -758,6 +761,7 @@ def build_block_mat(shape, block_dur):
 
 
 if __name__ == '__main__':
+    plt.close('all')
     # exp. duration (num. trials; training consists in several exps)
     exp_dur = 100
     # num steps per trial
@@ -781,10 +785,12 @@ if __name__ == '__main__':
         '_bd_' + str(block_dur) + '_ev_' +\
         str(stim_ev) + '/' + str(env_seed)
     folder = exp
-
+    num_tr = 260000
     # get experiment params and data
     exp_params = np.load(exp + '/experiment_setup.npz')
-    data = np.load(exp + '/trials_stats_0_80000.npz')
+    data = np.load(exp + '/trials_stats_0_' + str(num_tr) + '.npz')
+    print('num. trials: ' + str(data['evidence'].shape[0]))
+    start_per = num_tr - 20000
     # plot psycho. curves
     ev = np.reshape(data['evidence'], (1, data['evidence'].shape[0])).copy()
     perf = np.reshape(data['performance'],
@@ -792,7 +798,9 @@ if __name__ == '__main__':
     action = np.reshape(data['action'], (1, data['action'].shape[0])).copy()
     stim_pos = np.reshape(data['stims_position'],
                           (1, data['stims_position'].shape[0])).copy()
-    plot_psychometric_curves(ev, perf, action, blk_dur=block_dur, figs=True)
+    plot_psychometric_curves(ev[:, start_per:], perf[:, start_per:],
+                             action[:, start_per:], blk_dur=block_dur,
+                             figs=True)
     # plot learning
     ev = np.reshape(data['evidence'], (1, data['evidence'].shape[0])).copy()
     perf = np.reshape(data['performance'],
@@ -801,3 +809,22 @@ if __name__ == '__main__':
     stim_pos = np.reshape(data['stims_position'],
                           (1, data['stims_position'].shape[0])).copy()
     plot_learning(perf, ev, stim_pos, action, view_fig=True)
+    #                  folder='/home/molano/', name='', save_fig=True)
+
+    # test with old data
+    start_per = 10000
+    exp = '/home/molano/expectations_project/priors/novel_data/' +\
+        'main_exp_0208_200_04/trial_duration_10_repeating_prob_0.2_0.8' +\
+        '_rewards_-0.1_0.0_1.0_-1.0_block_dur_200_stimEv_0.4_gamma_0.8' +\
+        '_num_units_32_update_net_step_5_network_ugru_11/trains/train_0/' +\
+        'trials_stats_50000.npz'
+    data = np.load(exp)
+    ev = np.reshape(data['evidence'], (1, data['evidence'].shape[0])).copy()
+    perf = np.reshape(data['performance'],
+                      (1, data['performance'].shape[0])).copy()
+    action = np.reshape(data['action'], (1, data['action'].shape[0])).copy()
+    stim_pos = np.reshape(data['stims_position'],
+                          (1, data['stims_position'].shape[0])).copy()
+    plot_psychometric_curves(ev[:, start_per:], perf[:, start_per:],
+                             action[:, start_per:], blk_dur=block_dur,
+                             figs=True)
