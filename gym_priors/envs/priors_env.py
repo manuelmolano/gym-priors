@@ -148,6 +148,7 @@ class PriorsEnv(gym.Env):
         info = {'perf': correct, 'ev': self.evidence}
 
         if new_trial:
+            # keep main variables of the trial
             self.stm_pos.append(self.stms_pos_new_trial)
             self.perf_mat.append(correct)
             self.action.append(action)
@@ -155,6 +156,7 @@ class PriorsEnv(gym.Env):
             new_st = self.new_trial()
             # check if it is time to update the network
             done = ((self.num_tr-1) % self.exp_dur == 0) and (self.num_tr != 1)
+            # check if it is time to save the trial-to-trial data
             if self.num_tr % 10000 == 0:
                 self.save_trials_data()
                 self.output_stats()
@@ -164,21 +166,30 @@ class PriorsEnv(gym.Env):
         return new_st, reward, done, info
 
     def get_state(self):
-        self.timestep += 1  # this was previously in pullArm
+        """
+        Outputs a new observation using stim 1 and 2 means.
+        It also outputs a fixation signal that is always -1 except at the
+        end of the trial that is 0
+        """
+        self.timestep += 1
+        # if still in the integration period present a new observation
         if self.timestep < self.trial_dur:
-            self.state = [np.random.normal(self.int_st[0], scale=1),
-                          np.random.normal(
-                                           self.int_st[1],
-                                           scale=1), -1]
+            self.state = [np.random.normal(self.int_st[0]),
+                          np.random.normal(self.int_st[1]), -1]
         else:
             self.state = [0, 0, 0]
 
+        # update evidence
         self.evidence += self.state[0]-self.state[1]
-        self.state = np.reshape(self.state, [1, self.num_actions, 1])
 
         return np.reshape(self.state, (3, ))
 
     def new_trial(self):
+        """
+        this function creates a new trial, deciding the amount of coherence
+        (through the mean of stim 2) and the position of stim 1. Once it has
+        done this it calls get_state to get the first observation of the trial
+        """
         self.num_tr += 1
         self.timestep = 0
         self.evidence = 0
@@ -209,6 +220,10 @@ class PriorsEnv(gym.Env):
         return s
 
     def save_trials_data(self):
+        """
+        save trial-to-trial data for:
+        evidence, stim postion, action taken and outcome
+        """
         # Periodically save model trials statistics.
         data = {'stims_position': self.stm_pos,
                 'action': self.action,
@@ -221,6 +236,9 @@ class PriorsEnv(gym.Env):
         return self.new_trial()
 
     def output_stats(self):
+        """
+        plot temporary learning and bias curves
+        """
         sys.path.append(os.path.dirname(os.path.realpath(__file__)))
         import analyses_priors as ap
         aux_shape = (1, len(self.ev_mat))
