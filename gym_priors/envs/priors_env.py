@@ -2,7 +2,6 @@ import os
 import gym
 import numpy as np
 from gym import spaces
-import utils
 import sys
 # from gym.utils import seeding
 
@@ -77,6 +76,9 @@ class PriorsEnv(gym.Env):
         when using the make function of the gym toolbox, so this is a way
         around to set the parameters.
         """
+        # add current path to sys.path so as to import utils
+        sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+        import utils
         # exp. duration (num. trials; training consists in several exps)
         self.exp_dur = exp_dur or args.exp_dur or self.exp_dur
         # num steps per trial
@@ -241,6 +243,7 @@ class PriorsEnv(gym.Env):
         """
         plot temporary learning and bias curves
         """
+        # add current path to sys.path so as to import analyses_priors
         sys.path.append(os.path.dirname(os.path.realpath(__file__)))
         import analyses_priors as ap
         aux_shape = (1, len(self.ev_mat))
