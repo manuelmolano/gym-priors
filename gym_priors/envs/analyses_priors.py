@@ -11,8 +11,6 @@ import matplotlib.pyplot as plt
 import matplotlib
 from scipy.optimize import curve_fit
 from scipy.special import erf
-from sklearn.metrics import roc_curve, auc
-from sklearn.decomposition import PCA
 import analyses
 import utils
 # This is the 3D plotting toolkit
@@ -195,9 +193,6 @@ def plot_learning(performance, evidence, stim_position, action,
         plt.title('performance')
         plt.xlabel('trials')
 
-        print(folder)
-        print(save_fig)
-        print(f)
         if folder != '' and save_fig:
             f.savefig(folder + '/performance_' + name + '.svg',
                       dpi=600, bbox_inches='tight')
@@ -591,31 +586,6 @@ def plot_trials(evidence, trial_duration, performance, stim_position,
         plt.xlabel('time (a.u.)')
 
 
-def plot_sequence(stims_pos, repeat, num_trials):
-    """
-    plot the sequence of trials
-    """
-    plt.figure(figsize=(8, 4), dpi=250)
-    matplotlib.rcParams.update({'font.size': 8})
-    plt.subplots_adjust(left=left, bottom=bottom, right=right,
-                        top=top, wspace=wspace, hspace=hspace)
-    # plot 400 first trials (to see the repetition sequences)
-    plt.subplot(3, 1, 1)
-    plt.imshow(stims_pos.reshape(1, stims_pos.shape[0]), aspect='auto')
-    plt.ylabel('sequence')
-    plt.yticks([])
-    plt.subplot(3, 1, 2)
-    plt.imshow(stims_pos[0:num_trials].reshape(1, num_trials), aspect='auto')
-    plt.ylabel('sequence (zoom)')
-    plt.yticks([])
-    plt.subplot(3, 1, 3)
-    plt.plot(repeat[0:num_trials])
-    plt.xlim(0, num_trials)
-    plt.xlabel('trials')
-    plt.ylabel('repeat')
-    plt.yticks([0, 1])
-
-
 def plot_fractions(lims):
     """
     plot dashed lines for 0.25, 0.5 and 0.75
@@ -624,16 +594,6 @@ def plot_fractions(lims):
     plt.plot(lims, [0.5, 0.5], '--k', lw=0.25)
     plt.plot(lims, [0.75, 0.75], '--k', lw=0.25)
     plt.xlim(lims[0], lims[1])
-
-
-def roc_analysis(X, y):
-    """
-    compute the roc curve
-    """
-    fpr, tpr, _ = roc_curve(y, X)
-    roc_auc = auc(fpr, tpr)
-
-    return fpr, tpr, roc_auc
 
 
 def probit_lapse_rates(x, beta, alpha, piL, piR):
@@ -669,86 +629,6 @@ def ideal_observer(evidence, stim_position, alpha=0, tau=2, window=100):
         final_choice = evidence < 0
 
     return final_choice
-
-
-def pca_3d(net_st, cond_mat, values, ind, title):
-    plt.figure()
-    num_neurons = int(net_st.shape[1]/12)
-    print(num_neurons)
-    ax = plt.axes(projection='3d')
-    X = np.array(net_st[:, num_neurons*ind:num_neurons*(ind+1)])
-    pca = PCA(n_components=3)
-    aux = pca.fit_transform(X)
-    inds = cond_mat[ind, :] == values[0]
-    ax.scatter3D(aux[inds, 0], aux[inds, 1], aux[inds, 2], color='r')
-    inds = cond_mat[ind, :] == values[1]
-    ax.scatter3D(aux[inds, 0], aux[inds, 1], aux[inds, 2], color='b')
-    plt.title(title)
-
-    plt.figure()
-    num_neurons = int(net_st.shape[1]/12)
-    ax = plt.axes(projection='3d')
-    X = np.array(net_st[:, num_neurons*ind:num_neurons*(ind+1)])
-    pca = PCA(n_components=3)
-    aux = pca.fit_transform(X)
-    inds = cond_mat[ind, :] == values[0]
-    ax.scatter3D(aux[inds, 1], aux[inds, 0], aux[inds, 2], color='r')
-    inds = cond_mat[ind, :] == values[1]
-    ax.scatter3D(aux[inds, 1], aux[inds, 0], aux[inds, 2], color='b')
-    plt.title(title)
-
-    plt.figure()
-    num_neurons = int(net_st.shape[1]/12)
-    ax = plt.axes(projection='3d')
-    X = np.array(net_st[:, num_neurons*ind:num_neurons*(ind+1)])
-    pca = PCA(n_components=3)
-    aux = pca.fit_transform(X)
-    inds = cond_mat[ind, :] == values[0]
-    ax.scatter3D(aux[inds, 2], aux[inds, 0], aux[inds, 1], color='r')
-    inds = cond_mat[ind, :] == values[1]
-    ax.scatter3D(aux[inds, 2], aux[inds, 0], aux[inds, 1], color='b')
-    plt.title(title)
-
-
-def plot_cond(pcs, mat_cond, values, name, st, mask, num_samples):
-    mat_cond_aux = mat_cond[0, st:].copy()
-    mat_cond_aux = mat_cond_aux[mask]
-
-    pcs = pcs[-num_samples:, :]
-    mat_cond_aux = mat_cond_aux[-num_samples:]
-
-    inds = mat_cond_aux == values[0]
-    plt.scatter(pcs[inds, 0], pcs[inds, 1], s=80, facecolors='none',
-                edgecolors='r', label=name+' '+str(values[0]))
-    inds = mat_cond_aux == values[1]
-    plt.scatter(pcs[inds, 0], pcs[inds, 1], s=80, facecolors='none',
-                edgecolors='b', label=name+' '+str(values[1]))
-    plt.title(name)
-    plt.legend()
-
-
-def plot_pcs(pcs, mat_cond, values, name, st, mask, panel, grid=[], ind=0):
-    colors = 'rbg'
-    for ind_pc in range(pcs.shape[1]):
-        mat_cond_aux = mat_cond[0, st:].copy()
-        mat_cond_aux = mat_cond_aux[mask]
-        if len(grid) == 0:
-            plt.subplot(5, pcs.shape[1], panel+ind_pc)
-        else:
-            plt.subplot(grid[0], grid[1], ind+ind_pc)
-
-        for ind_v in range(len(values)):
-            inds = mat_cond_aux == values[ind_v]
-            aux, bins = np.histogram(pcs[inds, ind_pc], 50)
-            aux = aux/np.sum(aux)
-            plt.plot(bins[1:], aux, color=colors[ind_v],
-                     label=name+' '+str(values[ind_v]), lw=0.5)
-
-        plt.xlabel(name)
-        plt.box(False)
-        plt.xticks([])
-        plt.yticks([])
-        # plt.legend()
 
 
 def build_block_mat(shape, block_dur):
