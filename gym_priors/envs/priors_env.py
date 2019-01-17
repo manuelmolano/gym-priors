@@ -66,9 +66,7 @@ class PriorsEnv(gym.Env):
         # summed activity across the trial
         self.action = []
 
-    def update_params(self, exp_dur=None, trial_dur=None, rewards=None,
-                      block_dur=None, stim_ev=None, rep_prob=None, folder=None,
-                      args=None, seed=0):
+    def update_params(self, args, seed=0):
         """
         this function should be run after creating an environment to set the
         main parameters.
@@ -81,22 +79,22 @@ class PriorsEnv(gym.Env):
         import utils
         print(args)
         # exp. duration (num. trials; training consists in several exps)
-        self.exp_dur = exp_dur or args.exp_dur or self.exp_dur
+        self.exp_dur = args.exp_dur or self.exp_dur
         # num steps per trial
-        self.trial_dur = trial_dur or args.trial_dur or self.trial_dur
+        self.trial_dur = args.trial_dur or self.trial_dur
         # rewards given for: stop fixating, keep fixating, correct, wrong
-        self.rewards = rewards or args.reward or self.rewards
+        self.rewards = args.reward or self.rewards
         # number of trials per blocks
-        self.block_dur = block_dur or args.block_dur or self.block_dur
+        self.block_dur = args.block_dur or self.block_dur
         # stimulus evidence
-        stim_ev = stim_ev or args.stim_ev or self.stim_ev
+        stim_ev = args.stim_ev or self.stim_ev
         self.stim_ev = np.max([stim_ev, 10e-5])
         # prob. of repeating the stimuli in the positions of previous trial
-        self.rep_prob = rep_prob or args.rep_prob or self.rep_prob
+        self.rep_prob = args.rep_prob or self.rep_prob
         # model seed
         self.env_seed = seed or self.env_seed
         # folder where data will be saved
-        aux_folder = folder or args.folder or self.folder
+        aux_folder = args.folder or self.folder
         exp = aux_folder + '/ed_' + str(self.exp_dur) +\
             '_rp_' +\
             str(utils.list_str(self.rep_prob)) +\
