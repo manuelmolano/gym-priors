@@ -10,8 +10,8 @@ class PriorsEnv(gym.Env):
     metadata = {}
 
     def __init__(self, exp_dur=100, trial_dur=10,
-                 rep_prob=None, rewards=(0.1, -0.1, 1.0, -1.0), env_seed='0',
-                 block_dur=200, stim_ev=0.5, folder=''):
+                 rep_prob=(.2, .8), rewards=(0.1, -0.1, 1.0, -1.0),
+                 env_seed='0', block_dur=200, stim_ev=0.5, folder=None):
         print('init environment!')
         # exp. duration (training will consist in several experiments)
         self.exp_dur = exp_dur
@@ -77,11 +77,6 @@ class PriorsEnv(gym.Env):
         # add current path to sys.path so as to import utils
         sys.path.append(os.path.dirname(os.path.realpath(__file__)))
         import utils
-        import matplotlib.pyplot as plt
-        plt.figure()
-        plt.plot(np.arange(10))
-        plt.show()
-        asdasdasd
         # exp. duration (num. trials; training consists in several exps)
         self.exp_dur = args.exp_dur or self.exp_dur
         # num steps per trial
@@ -99,22 +94,26 @@ class PriorsEnv(gym.Env):
         self.env_seed = seed or self.env_seed
         # folder where data will be saved
         aux_folder = args.folder or self.folder
-        exp = aux_folder + '/ed_' + str(self.exp_dur) +\
-            '_rp_' +\
-            str(utils.list_str(self.rep_prob)) +\
-            '_r_' + str(utils.list_str(self.rewards)) +\
-            '_bd_' + str(self.block_dur) + '_ev_' +\
-            str(self.stim_ev) + '/' + str(self.env_seed)
-        if not os.path.exists(exp):
-            os.makedirs(exp)
-        self.folder = exp
-        # save environment parameters
-        data = {'exp_dur': self.exp_dur, 'rep_prob': self.rep_prob,
-                'rewards': self.rewards, 'stim_ev': self.stim_ev,
-                'block_dur': self.block_dur,
-                'starting_prob': self.rep_prob[self.curr_rep_prob]}
+        if aux_folder is not None:
+            self.sv_data = True
+            exp = aux_folder + '/ed_' + str(self.exp_dur) +\
+                '_rp_' +\
+                str(utils.list_str(self.rep_prob)) +\
+                '_r_' + str(utils.list_str(self.rewards)) +\
+                '_bd_' + str(self.block_dur) + '_ev_' +\
+                str(self.stim_ev) + '/' + str(self.env_seed)
+            if not os.path.exists(exp):
+                os.makedirs(exp)
+            self.folder = exp
+            # save environment parameters
+            data = {'exp_dur': self.exp_dur, 'rep_prob': self.rep_prob,
+                    'rewards': self.rewards, 'stim_ev': self.stim_ev,
+                    'block_dur': self.block_dur,
+                    'starting_prob': self.rep_prob[self.curr_rep_prob]}
 
-        np.savez(exp + '/experiment_setup.npz', **data)
+            np.savez(exp + '/experiment_setup.npz', **data)
+        else:
+            self.sv_data = False
         print('--------------- Priors experiment ---------------')
         print('Duration of each experiment (in trials): ' +
               str(self.exp_dur))
@@ -155,16 +154,17 @@ class PriorsEnv(gym.Env):
         info = {'perf': correct, 'ev': self.evidence}
 
         if new_trial:
-            # keep main variables of the trial
-            self.stm_pos.append(self.stms_pos_new_trial)
-            self.perf_mat.append(correct)
-            self.action.append(action)
-            self.ev_mat.append(self.evidence)
+            if self.sv_data:
+                # keep main variables of the trial
+                self.stm_pos.append(self.stms_pos_new_trial)
+                self.perf_mat.append(correct)
+                self.action.append(action)
+                self.ev_mat.append(self.evidence)
             new_st = self.new_trial()
             # check if it is time to update the network
             done = ((self.num_tr-1) % self.exp_dur == 0) and (self.num_tr != 1)
             # check if it is time to save the trial-to-trial data
-            if self.num_tr % 10000 == 0:
+            if self.sv_data and self.num_tr % 10000 == 0:
                 self.save_trials_data()
                 self.output_stats()
         else:

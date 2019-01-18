@@ -651,13 +651,13 @@ if __name__ == '__main__':
     # number of trials per blocks
     block_dur = 200
     # stimulus evidence
-    stim_ev = 0.5
+    stim_ev = 0.7
     # prob. of repeating the stimuli in the positions of previous trial
     rep_prob = [0.1, 0.9]
     # model seed
     env_seed = 0
     # folder where data will be saved
-    main_folder = '/home/molano/expectations_results'
+    main_folder = '/home/molano/expectations_results/a2c/'
     exp = main_folder + '/ed_' + str(exp_dur) +\
         '_rp_' +\
         str(utils.list_str(rep_prob)) +\
@@ -665,12 +665,12 @@ if __name__ == '__main__':
         '_bd_' + str(block_dur) + '_ev_' +\
         str(stim_ev) + '/' + str(env_seed)
     folder = exp
-    num_tr = 260000
+    num_tr = 90000
     # get experiment params and data
     exp_params = np.load(exp + '/experiment_setup.npz')
     data = np.load(exp + '/trials_stats_0_' + str(num_tr) + '.npz')
     print('num. trials: ' + str(data['evidence'].shape[0]))
-    start_per = num_tr - 20000
+    start_per = num_tr - num_tr
     # plot psycho. curves
     ev = np.reshape(data['evidence'], (1, data['evidence'].shape[0])).copy()
     perf = np.reshape(data['performance'],
@@ -681,6 +681,13 @@ if __name__ == '__main__':
     plot_psychometric_curves(ev[:, start_per:], perf[:, start_per:],
                              action[:, start_per:], blk_dur=block_dur,
                              figs=True)
+    plt.figure()
+    plt.imshow(stim_pos[:, 0:800], aspect='auto')
+    plt.figure()
+    plt.imshow(ev[:, 0:800], aspect='auto')
+    plt.figure()
+    plt.imshow(action[:, 0:800], aspect='auto')
+
     # plot learning
     ev = np.reshape(data['evidence'], (1, data['evidence'].shape[0])).copy()
     perf = np.reshape(data['performance'],
