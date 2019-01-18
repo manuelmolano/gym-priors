@@ -77,7 +77,8 @@ class PriorsEnv(gym.Env):
         # add current path to sys.path so as to import utils
         sys.path.append(os.path.dirname(os.path.realpath(__file__)))
         import utils
-        print(args)
+        import matplotlib.pyplot as plt
+
         # exp. duration (num. trials; training consists in several exps)
         self.exp_dur = args.exp_dur or self.exp_dur
         # num steps per trial
@@ -121,6 +122,10 @@ class PriorsEnv(gym.Env):
         print('Stim evidence: ' + str(self.stim_ev))
         print('Saving folder: ' + str(self.folder))
         print('--------------- ----------------- ---------------')
+        plt.figure()
+        plt.plot(np.arange(10))
+        plt.show()
+        asdasdasd
 
     def step(self, action):
         """
